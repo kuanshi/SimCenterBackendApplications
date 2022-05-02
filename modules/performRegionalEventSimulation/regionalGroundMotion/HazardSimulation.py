@@ -107,6 +107,62 @@ def site_job(hazard_info):
         exit()
 
 
+def rupture_job(hazard_info):
+
+    # Sites and stations
+    print('HazardSimulation: creating stations.')
+    site_info = hazard_info['Site']
+    if site_info['Type'] == 'From_CSV':
+        input_file = os.path.join(input_dir,site_info['input_file'])
+        output_file = site_info.get('output_file',False)
+        if output_file:
+            output_file = os.path.join(input_dir, output_file)
+        min_ID = site_info['min_ID']
+        max_ID = site_info['max_ID']
+        # forward compatibility
+        if minID:
+            min_ID = minID
+            site_info['min_ID'] = minID
+        if maxID:
+            max_ID = maxID
+            site_info['max_ID'] = maxID
+        # Creating stations from the csv input file
+        z1_tag = 0
+        z25_tag = 0
+        if 'OpenQuake' in hazard_info['Scenario']['EqRupture']['Type']:
+            z1_tag = 1
+            z25_tag = 1
+        if 'Global Vs30' in site_info['Vs30']['Type']:
+            vs30_tag = 1
+        elif 'Thompson' in site_info['Vs30']['Type']:
+            vs30_tag = 2
+        elif 'NCM' in site_info['Vs30']['Type']:
+            vs30_tag = 3
+        else:
+            vs30_tag = 0
+        # Creating stations from the csv input file
+        stations = create_stations(input_file, output_file, min_ID, max_ID, vs30_tag, z1_tag, z25_tag)
+    if stations:
+        print('HazardSimulation: stations created.')
+    else:
+        print('HazardSimulation: please check the "Input" directory in the configuration json file.')
+        exit()
+
+    # Scenarios
+    print('HazardSimulation.rupture_job: creating scenarios.')
+    scenario_info = hazard_info['Scenario']
+    if scenario_info['Type'] == 'Earthquake':
+        # Creating earthquake scenarios
+        if scenario_info['EqRupture']['Type'] in ['PointSource', 'ERF']:
+            scenario_info['Number'] = 'All'
+            scenarios = create_earthquake_scenarios(scenario_info, stations, dir_info)
+    else:
+        # TODO: extending this to other hazards
+        print('HazardSimulation.rupture_job: currently only supports EQ simulations.')
+    #print(scenarios)
+    print('HazardSimulation.rupture_job: ruptures data saved.')
+
+
 def hazard_job(hazard_info):
 
     # Sites and stations
@@ -390,6 +446,8 @@ if __name__ == '__main__':
         hazard_job(hazard_info)
     elif args.job_type == 'Site':
         site_job(hazard_info)
+    elif args.job_type == 'Rupture':
+        rupture_job(hazard_info)
     else:
         print('HazardSimulation: --job_type = Hazard or Site (please check).')
 
