@@ -111,6 +111,8 @@ def create_earthquake_scenarios(scenario_info, stations, dir_info):
             else:
                 source_model = scenario_info['EqRupture']['Model']
                 source_name = scenario_info['EqRupture'].get('Name', None)
+                # add an option for filtering sources by a keyword list
+                filter_keyword = scenario_info['EqRupture'].get('Filters', [])
                 min_M = scenario_info['EqRupture'].get('min_Mag', 5.0)
                 max_M = scenario_info['EqRupture'].get('max_Mag', 9.0)
                 max_R = scenario_info['EqRupture'].get('max_Dist', 1000.0)
@@ -118,7 +120,8 @@ def create_earthquake_scenarios(scenario_info, stations, dir_info):
                 erf_data = export_to_json(eq_source, ref_station, outfile = os.path.join(dir_info['Output'],'RupFile.json'), \
                                         EqName = source_name, minMag = min_M, \
                                         maxMag = max_M, maxDistance = max_R, \
-                                        maxSources = np.max([500, source_num]))
+                                        maxSources = np.max([500, source_num]),
+                                        filterKeyword = filter_keyword)
                 # Parsing data
                 feat = erf_data['features']
                 """
@@ -166,7 +169,7 @@ def create_earthquake_scenarios(scenario_info, stations, dir_info):
     return scenario_data
 
 
-def sample_scenarios(rup_info=[], sample_num=1, sample_type='Random', source_name=None, min_M=0.0):
+def sample_scenarios(rup_info=[], sample_num=1, sample_type='Random', source_name=None, min_M=0.0, filter_keyword=[]):
 
     if len(rup_info) == 0:
         print('CreateScenario.sample_scenarios: no available scenario provided - please relax earthquake filters.')
@@ -176,6 +179,14 @@ def sample_scenarios(rup_info=[], sample_num=1, sample_type='Random', source_nam
     tag = []
     for i, cur_f in enumerate(feat):
         if source_name and (source_name not in cur_f['properties']['Name']):
+            continue
+        # filtering sources
+        flag_filter = False
+        for cur_kw in filter_keyword:
+            if cur_kw and (cur_kw in cur_f['properties']['Name']):
+                flag_filter = True
+                break
+        if flag_filter:
             continue
         if min_M > cur_f['properties']['Magnitude']:
             continue

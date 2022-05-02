@@ -146,7 +146,7 @@ def get_rupture_distance(erf, source_index, rupture_index, lat, lon):
     return distToRupture
 
 
-def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, maxMag = 10.0, maxDistance = 1000.0, maxSources = 500):
+def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, maxMag = 10.0, maxDistance = 1000.0, maxSources = 500, filterKeyword = None):
 
     # Initializing
     erf_data = {"type": "FeatureCollection"}
@@ -219,6 +219,15 @@ def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, m
             if (EqName is not None):
                 if (EqName not in name):
                     continue
+            # filtering the sources
+            flagFilter = False
+            for cur_kw in filterKeyword:
+                if (cur_kw is not None):
+                    if (cur_kw in name):
+                        flagFilter = True
+                        break
+            if flagFilter:
+                continue
             cur_dict['properties'].update({'Name': name})
             Mag = float(rupture.getMag())
             if (Mag < minMag) or (Mag > maxMag):
