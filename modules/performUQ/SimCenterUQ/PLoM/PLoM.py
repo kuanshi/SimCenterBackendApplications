@@ -652,7 +652,9 @@ class PLoM:
             error_ratio = 0
             increasing_iterations = 0
             
-            while (iteration < max_iter and self.errors[iteration] > tol*self.errors[0] and (increasing_iterations < 3)):
+            #while (iteration < max_iter and self.errors[iteration] > tol*self.errors[0] and (increasing_iterations < 3)):
+            # KZ, 07/24: tolerance as absolute error
+            while (iteration < max_iter and self.errors[iteration] > tol and (increasing_iterations < 2)):
                 self.logfile.write_msg(msg='PLoM.ISDEGeneration: running iteration {}.'.format(iteration+1),msg_type='RUNNING',msg_level=0)
                 Hnewvalues, nu_lambda, x_, x_2 = plom.generator(self.Z, self.Y, self.a,\
                                             n_mc, self.x_mean, self.H, self.s_v,\
@@ -664,7 +666,9 @@ class PLoM:
                 self.hessian = plom.hessian_gamma(Hnewvalues, self.psi, self.g_c, self.phi, self.mu, self.x_mean)
                 self.inverse = plom.solve_inverse(self.hessian)
  
-                self.lambda_i = self.lambda_i - 0.3*(self.inverse).dot(self.gradient)
+                #self.lambda_i = self.lambda_i - 0.3*(self.inverse).dot(self.gradient)
+                # KZ, 07/24: self-adapt step size to help convergence
+                self.lambda_i = self.lambda_i - 0.3*np.tanh(self.errors[-1]/tol-1)*(self.inverse).dot(self.gradient)
 
                 self.Z = Hnewvalues[:,-self.N:].dot(self.a)
                 self.Y = nu_lambda[:,-self.N:].dot(self.a)
@@ -672,7 +676,9 @@ class PLoM:
 
                 (self.errors).append(plom.err(self.gradient, self.b_c))
                     
-                if (error_ratio > 1.00):
+                #if (error_ratio > 1.00):
+                # KZ, 07/24: absolute error
+                if (self.errors[iteration] > 1.00):
                     increasing_iterations +=1
                 else:
                     increasing_iterations = 0 
