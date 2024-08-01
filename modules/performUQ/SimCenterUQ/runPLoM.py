@@ -507,9 +507,10 @@ class runPLoM:
                 self.preTrainedModel = os.path.join(work_dir, "templatedir/surrogatePLoM.h5")
 
             # KZ, 07/24: loading hyperparameter functions (evaluating self.kdeTolerance and self.smootherKDE from user-defined case)
-            if self._load_hyperparameter():
-                msg = 'runPLoM._parse_plom_parameters: Error in loading hyperparameter functions.'
-                self.errlog.exit(msg)
+            if self.smootherKDE_Customize or self.kdeTolerance_Customize:
+                if self._load_hyperparameter():
+                    msg = 'runPLoM._parse_plom_parameters: Error in loading hyperparameter functions.'
+                    self.errlog.exit(msg)
 
         except:
             run_flag = 1
