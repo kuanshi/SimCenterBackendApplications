@@ -676,7 +676,7 @@ class runPLoM:
         else:
             tasks = ['DataNormalization','RunPCA','RunKDE']
         self.modelPLoM.ConfigTasks(task_list=tasks)
-        self.modelPLoM.RunAlgorithm(n_mc=self.n_mc, tol = self.tolIter, max_iter = self.numIter, seed_num=self.randomSeed, tolKDE=self.kdeTolerance)
+        self.modelPLoM.RunAlgorithm(n_mc=self.n_mc, epsilon_kde = self.smootherKDE, tol = self.tolIter, max_iter = self.numIter, seed_num=self.randomSeed, tolKDE=self.kdeTolerance)
         if self.n_mc > 0:
             self.modelPLoM.export_results(data_list=['/X0','/X_new'])
         else:
