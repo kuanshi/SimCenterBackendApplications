@@ -125,6 +125,12 @@ class runPLoM:
             if not do_simulation:
                 self.outData = os.path.join(work_dir, "templatedir/outFile.in")
             self._create_variables_from_input()
+            # KZ, 08/24: adding constraints config
+            self.beta_config = dict()
+            # KZ, 08/24: load constraints from model
+            if self._constraints_from_model(job_config):
+                msg = 'runPLoM._parse_plom_parameters: Error in calculating constraints from model definition.'
+                self.errlog.exit(msg)
         elif surrogateInfo["method"] == "Sampling and Simulation":
             # run simulation first to generate training data
             do_sampling = False
@@ -659,7 +665,34 @@ class runPLoM:
         except:
             run_flag = 1
         return run_flag
-
+    
+    # KZ, 08/24: calcuating the prediction targets from ground motion records and/or structural model.
+    # This essentially is another approach of defining constraints in EE-UQ (in comparison, the basic approach
+    # is that user prepares and uploads it via the EE-UQ user interface).
+    def _constraints_from_model(self, job_config):
+        surrogateInfo = job_config["UQ"]["surrogateMethodInfo"]
+        evtInfo = job_config.get('Events')
+        run_flag = 0
+        try:
+            # get the SIMConstraints and EVTConstraints from input json
+            evtConstraints = surrogateInfo.get('EVTConstraints',[])
+            simConstraints = surrogateInfo.get('SIMConstraints',[])
+            # get the constraints per request
+            if len(evtConstraints) > 0:
+                    self._get_evt_constraints(evtInfo, evtConstraints)
+        except:
+            run_flag = 1
+        return run_flag
+    
+    # KZ, 08/24: 
+    def _get_evt_constraints(self, evtInfo, evtConstraints):
+        # get target spectrum
+        tgtSpectrum = evtInfo[0].get('TargetSpectrum',None)
+        self.beta_config.update({
+            'TargetSpectrum': tgtSpectrum,
+            'EVTConstraints': evtConstraints
+        })
+        return
 
     def train_model(self, model_name='SurrogatePLoM'):
         db_path = os.path.join(self.work_dir, 'templatedir')
@@ -670,7 +703,7 @@ class runPLoM:
             self.modelPLoM = PLoM(model_name=model_name, data=self.preTrainedModel, db_path=db_path, 
                 tol_pca = self.epsilonPCA, epsilon_kde = self.smootherKDE, runDiffMaps = self.diffMap)
         if self.constraintsFlag:
-            self.modelPLoM.add_constraints(self.constraintsFile)
+            self.modelPLoM.add_constraints(self.constraintsFile, constraint_config=self.beta_config)
         if self.n_mc > 0:
             tasks = ['DataNormalization','RunPCA','RunKDE','ISDEGeneration']
         else:

@@ -16,7 +16,7 @@ import sys
 from general import *
 
 class PLoM:
-    def __init__(self, model_name='plom', data='', separator=',', col_header=False, constraints = None, run_tag = False, plot_tag = False, num_rlz = 5, tol_pca = 1e-6, epsilon_kde = 25, tol_PCA2 = 1e-5, tol = 1e-6, max_iter = 50, runDiffMaps = True, db_path=None):
+    def __init__(self, model_name='plom', data='', separator=',', col_header=False, constraints = None, run_tag = False, plot_tag = False, num_rlz = 5, tol_pca = 1e-6, epsilon_kde = 25, tol_PCA2 = 1e-5, tol = 1e-6, max_iter = 50, runDiffMaps = True, db_path=None, beta_config=None):
         # basic setups
         self._basic_config(model_name=model_name, db_path=db_path)
         self.plot_tag = plot_tag
@@ -40,7 +40,7 @@ class PLoM:
                 self.logfile.write_msg(msg='PLoM: {} saved in {}.'.format('ScatterMatrix_X0.png',self.vl_path),msg_type='RUNNING',msg_level=0)
             """
         if not self.constraints: 
-            if self.add_constraints(constraints_file=constraints):
+            if self.add_constraints(constraints_file=constraints, constraint_config=beta_config):
                 self.logfile.write_msg(msg='PLoM: constraints input failed.',msg_type='ERROR',msg_level=0)
         # run
         if run_tag:
@@ -88,9 +88,10 @@ class PLoM:
             self.logfile.write_msg(msg='PLoM: visualization folder {} not initialized.'.format(self.vl_path),msg_type='WARNING',msg_level=0)        
 
     
-    def add_constraints(self, constraints_file = None):
+    def add_constraints(self, constraints_file = None, constraint_config=None):
 
         if not constraints_file:
+            self.constraint_config = None
             self.g_c = None
             self.D_x_g_c = None
             self.beta_c = []
@@ -110,19 +111,34 @@ class PLoM:
             self.logfile.write_msg(msg='PLoM.add_constraints: could not add constraints {}'.format(constraints_file),msg_type='ERROR',msg_level=0)
             return 1
         self.num_constraints = self.num_constraints+1
+        self.constraint_config = constraint_config
         try:
-            self.constraints.update({
-                'Constraint'+str(self.num_constraints): {
-                    'filename': constraints_file,
-                    'g_c': new_constraints.g_c,
-                    'D_x_g_c': new_constraints.D_x_g_c,
-                    'beta_c': new_constraints.beta_c(),
-                    'beta_c_aux': new_constraints.beta_c_aux
-                }
-            })
+            if not self.constraint_config:
+                self.constraints.update({
+                    'Constraint'+str(self.num_constraints): {
+                        'filename': constraints_file,
+                        'g_c': new_constraints.g_c,
+                        'D_x_g_c': new_constraints.D_x_g_c,
+                        'beta_c': new_constraints.beta_c(),
+                        'beta_c_aux': new_constraints.beta_c_aux
+                    }
+                })
+            else:
+                self.constraints.update({
+                    'Constraint'+str(self.num_constraints): {
+                        'filename': constraints_file,
+                        'g_c': new_constraints.g_c,
+                        'D_x_g_c': new_constraints.D_x_g_c,
+                        'beta_c': new_constraints.beta_c(self.constraint_config),
+                        'beta_c_aux': new_constraints.beta_c_aux
+                    }
+                })
             self.g_c = new_constraints.g_c
             self.D_x_g_c = new_constraints.D_x_g_c
-            self.beta_c = new_constraints.beta_c()
+            if not self.constraint_config:
+                self.beta_c = new_constraints.beta_c()
+            else:
+                self.beta_c = new_constraints.beta_c(self.constraint_config)
             self.beta_c_aux = new_constraints.beta_c_aux
             self.logfile.write_msg(msg='PLoM.add_constraints: constraints added.',msg_type='RUNNING',msg_level=0)
             self.dbserver.add_item(item=[constraints_file],data_type='ConstraintsFile')
